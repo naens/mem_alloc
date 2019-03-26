@@ -312,6 +312,7 @@ void *mem_list;
 void
 mem_init()
 {
+    printf("memory initialization\n");
     array.data = malloc(4 * sizeof(struct cell));
     array.size = 4;
     array.data[0].size = MIN_SIZE;
@@ -326,6 +327,7 @@ mem_init()
 //    print_array(&array);
 }
 
+
 void
 mem_finalize()
 {
@@ -338,7 +340,9 @@ mem_finalize()
         mem_list = *((void**)mem_list);
         free(tmp);
     }
+    printf("memory finalized\n");
 }
+
 
 /* takes the first item from the array at index in order to return
  * for memory allocation: pointers are not valid
@@ -359,6 +363,7 @@ take_item(struct array *array, unsigned int i)
     return item;
 }
 
+
 void
 insert_item(struct array *array, unsigned int i, void *item)
 {
@@ -375,6 +380,7 @@ insert_item(struct array *array, unsigned int i, void *item)
 //    printf("INSERT_ITEM %04x at %d: items = %04x\n",
 //        PTR_NUM(item), i, PTR_NUM(array->data[i].items));
 }
+
 
 void*
 split_item(struct array *array, unsigned int i, void *item, uintptr_t n)
@@ -439,6 +445,7 @@ split_item(struct array *array, unsigned int i, void *item, uintptr_t n)
     return curr;
 }
 
+
 void*
 alloc_new_item(unsigned int n)
 {
@@ -457,11 +464,12 @@ alloc_new_item(unsigned int n)
     return item;
 }
 
+
 void*
 mem_alloc(unsigned int x)
 {
     unsigned int i;
-    void *item;
+    void *item, *area;
     uintptr_t n = BLOCKS(x + HEADER_SIZE);
 //    printf("\nMEM_ALLOC: x = %d, -> %" PRIuPTR " blocks needed\n", x, n);
 
@@ -498,9 +506,12 @@ mem_alloc(unsigned int x)
     item = split_item(&array, i, item, n);
     item_set_in_use(item, 1);
 //    print_item(item, "mem_alloc item");
+    area = item_get_area(item);
+    printf("allocated %d bytes at %p\n", x, area);
 //    print_array(&array);
-    return item_get_area(item);
+    return area;
 }
+
 
 void*
 item_get_buddy(struct array *array, void *item, unsigned int i, unsigned int *ibuddy)
@@ -520,6 +531,7 @@ item_get_buddy(struct array *array, void *item, unsigned int i, unsigned int *ib
         return ((char*)item) - buddy_size * BLOCK_SIZE;
     }
 }
+
 
 void
 delete_item(struct array *array, unsigned int i, void *item)
@@ -560,6 +572,7 @@ delete_item(struct array *array, unsigned int i, void *item)
         
     }
 }
+
 
 void
 coalesce(struct array *array, unsigned int i)
@@ -609,12 +622,16 @@ coalesce(struct array *array, unsigned int i)
 //    printf("================= COALESCE END\n");
 }
 
+
 void
 mem_free(void *area)
 {
     unsigned int i;
     void *item;
     uintptr_t size;
+
+    printf("freeing %p\n", area);
+
     item = item_from_area(area);
 //    printf("\nMEM_FREE: %04x\n", PTR_NUM(item));
     size = item_get_size(item);
