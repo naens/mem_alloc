@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/timeb.h>
 #include <stdint.h>
 
 #include "mem.h"
@@ -104,9 +105,9 @@ check_sum(unsigned char *buffer, unsigned int size)
     }
 }
 
-#define ARRAY_SIZE 2000
-#define NUMBER_OF_ALLOCATIONS 100
-#define MAXIMUM_ALLOC_SIZE 5000
+#define ARRAY_SIZE 20
+#define NUMBER_OF_ALLOCATIONS 10
+#define MAXIMUM_ALLOC_SIZE 50
 
 void
 print_area(unsigned char *buffer, unsigned int size)
@@ -126,19 +127,26 @@ print_area(unsigned char *buffer, unsigned int size)
 void
 test_random()
 {
-    unsigned int count, i, j, sz, ns;
+    unsigned int count, i, j, sz, t;
     void *array[ARRAY_SIZE];
     unsigned int sizes[ARRAY_SIZE];
     FILE *f = fopen("out", "w");
 
+//    struct timespec ts; 
+//    clock_gettime(CLOCK_REALTIME, &ts); 
+//    t = (unsigned int)(ts.tv_nsec + ts.tv_sec * 1000000000);
+  
+//    struct timeval tv;
+//    gettimeofday(&tv, NULL);
+//    t = (unsigned int)(1000000 * tv.tv_sec + tv.tv_usec);
 
-    struct timespec ts; 
-    clock_gettime(CLOCK_REALTIME, &ts); 
+//    t = time(0);
     
-    
-    ns = (unsigned int)(ts.tv_nsec + ts.tv_sec * 1000000000);
-    srand(ns);
-    //    srand(time(0));
+    struct timeb tb;
+    ftime(&tb);
+    t = (unsigned int)(1000000 * tb.time + tb.millitm);
+
+    srand(t);
 
     // initialize the array
     for (i = 0; i < ARRAY_SIZE; i++)
@@ -159,13 +167,13 @@ test_random()
             array[i] = mem_alloc((int)sz);
             sizes[i] = sz;
             fill_mem((unsigned char*)array[i], sizes[i]);
-            print_area(array[i], sizes[i]);
+//            print_area(array[i], sizes[i]);
             count++;
         }
         else
         {
             fprintf(f, "    mem_free(array[%d]);\n", i);
-            print_area(array[i], sizes[i]);
+//            print_area(array[i], sizes[i]);
             check_sum(array[i], sizes[i]);
             mem_free(array[i]);
             array[i] = NULL;
@@ -174,7 +182,7 @@ test_random()
         {
             fprintf(f, "[%03d]: fill_mem sz=%d\n", j, sizes[j]);
             fill_mem((unsigned char*)array[j], sizes[j]);
-            print_area(array[j], sizes[j]);
+//            print_area(array[j], sizes[j]);
         }
         j = (j + 1) % ARRAY_SIZE;
     }
@@ -185,7 +193,7 @@ test_random()
         if (array[i] != NULL)
         {
             fprintf(f, "    mem_free(array[%d]);\n", i);
-            print_area(array[i], sizes[i]);
+//            print_area(array[i], sizes[i]);
             check_sum(array[i], sizes[i]);
             mem_free(array[i]);
         }

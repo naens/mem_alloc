@@ -203,17 +203,6 @@ print_item(void *item, char *msg)
         uintptr_t next = (uintptr_t)item_get_next(item);
         printf("    prev: %04x", PTR_NUM(prev));
         printf("    next: %04x", PTR_NUM(next));
-/*
-        { // TEST
-            printf("\n");
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 8; j++) {
-                    printf("%02x ", (unsigned char)(((char*)item)[i*8 + j]));
-                }
-                printf("\n");
-            }
-        }
-*/
     }
     else
     {
@@ -243,7 +232,7 @@ array_set_size(struct array *array, unsigned int new_size)
     }
     if (new_size <= array->capacity)
     {
-        printf("new size: %d capacity=%d\n", new_size, array->capacity);
+//        printf("new size: %d capacity=%d\n", new_size, array->capacity);
         array->size = new_size;
     }
     else
@@ -255,8 +244,8 @@ array_set_size(struct array *array, unsigned int new_size)
         array->data = new_data;
         array->size = new_size;
         array->capacity = new_capacity;
-        printf("resize array: new size: %d, new capacity: %d\n",
-            array->size, array->capacity);
+//        printf("resize array: new size: %d, new capacity: %d\n",
+//            array->size, array->capacity);
     }
 }
 
@@ -334,7 +323,7 @@ mem_init()
     array.data[3].size = SIZE_3;
     array.data[3].items = NULL;
     mem_list = NULL;
-    print_array(&array);
+//    print_array(&array);
 }
 
 void
@@ -365,16 +354,16 @@ take_item(struct array *array, unsigned int i)
     }
     item = array->data[i].items;
     array->data[i].items = next;
-    printf("TAKE_ITEM at %d of size %" PRIuPTR ": items = %04x, item = %04x\n",
-        i, array->data[i].size, PTR_NUM(array->data[i].items), PTR_NUM(item));
+//    printf("TAKE_ITEM at %d of size %" PRIuPTR ": items = %04x, item = %04x\n",
+//        i, array->data[i].size, PTR_NUM(array->data[i].items), PTR_NUM(item));
     return item;
 }
 
 void
 insert_item(struct array *array, unsigned int i, void *item)
 {
-    printf("INSERT_ITEM %04x at %d: items = %04x\n",
-        PTR_NUM(item), i, PTR_NUM(array->data[i].items));
+//    printf("INSERT_ITEM %04x at %d: items = %04x\n",
+//        PTR_NUM(item), i, PTR_NUM(array->data[i].items));
     item_set_next(item, array->data[i].items);
     if (array->data[i].items != NULL)
     {
@@ -383,31 +372,31 @@ insert_item(struct array *array, unsigned int i, void *item)
     array->data[i].items = item;
     item_set_prev(item, NULL);
     item_set_in_use(item, 0);
-    printf("INSERT_ITEM %04x at %d: items = %04x\n",
-        PTR_NUM(item), i, PTR_NUM(array->data[i].items));
+//    printf("INSERT_ITEM %04x at %d: items = %04x\n",
+//        PTR_NUM(item), i, PTR_NUM(array->data[i].items));
 }
 
 void*
 split_item(struct array *array, unsigned int i, void *item, uintptr_t n)
 {
-    boolean first;
+//    boolean first;
     void *curr, *left, *right;
     uintptr_t szl, szr;
     boolean inh_l, inh_r;
     unsigned int i_left, i_right;
     curr = item;
-    first = 1;
-    printf("----------------- SPLIT BEGIN: i=%d, item=%04x, n=%" PRIuPTR "\n",
-        i, PTR_NUM(item), n);
+//    first = 1;
+//    printf("----------------- SPLIT BEGIN: i=%d, item=%04x, n=%" PRIuPTR "\n",
+//        i, PTR_NUM(item), n);
     while (array->data[i-1].size >= n && i > 4)
     {
-        if (first) {
-            first = 0;
-        } else {
-            printf("-----------------\n");
-        }
-        printf("SPLIT_ITEM: i=%d\n", i);
-        print_item(item, "split");
+//        if (first) {
+//            first = 0;
+//        } else {
+//            printf("-----------------\n");
+//        }
+//        printf("SPLIT_ITEM: i=%d\n", i);
+//        print_item(item, "split");
         szl = array->data[i-4].size;
         szr = array->data[i-1].size;
         inh_l = item_get_lr_bit(curr);
@@ -422,31 +411,31 @@ split_item(struct array *array, unsigned int i, void *item, uintptr_t n)
         item_set_in_use(right, 0);
         item_set_inh_bit(left, inh_l);
         item_set_inh_bit(right, inh_r);
-        printf("SPLIT_ITEM: szl=%" PRIuPTR ", szr=%" PRIuPTR "\n", szl, szr);
-        print_item(left, "left");
-        print_item(right, "right");
+//        printf("SPLIT_ITEM: szl=%" PRIuPTR ", szr=%" PRIuPTR "\n", szl, szr);
+//        print_item(left, "left");
+//        print_item(right, "right");
         i_left = i - 4;
         i_right = i - 1;
         if (szl >= n)
         {
             insert_item(array, i_right, right);
-            printf("SPLIT_ITEM(right): insert at %d, size=%" PRIuPTR "\n",
-                i_right, array->data[i_right].size);
-            print_item(right, "right");
+//            printf("SPLIT_ITEM(right): insert at %d, size=%" PRIuPTR "\n",
+//                i_right, array->data[i_right].size);
+//            print_item(right, "right");
             i = i_left;
             curr = left;
         }
         else
         {
             insert_item(array, i_left, left);
-            printf("SPLIT_ITEM(left): insert at %d, size=%" PRIuPTR "\n",
-                i_left, array->data[i_left].size);
-            print_item(right, "left");
+//            printf("SPLIT_ITEM(left): insert at %d, size=%" PRIuPTR "\n",
+//                i_left, array->data[i_left].size);
+//            print_item(right, "left");
             i = i_right;
             curr = right;
         }
     }
-    printf("----------------- SPLIT END\n");
+//    printf("----------------- SPLIT END\n");
     return curr;
 }
 
@@ -461,9 +450,9 @@ alloc_new_item(unsigned int n)
     item_set_size(fake_right, 0);
     item_set_lr_bit(fake_right, RIGHT);
     item_set_in_use(fake_right, 1);
-    print_item(fake_right, "fake_right");
+//    print_item(fake_right, "fake_right");
     item = ((char*)tmp) + sizeof(void*);
-    printf("alloc new item of %d blocks\n", n);
+//    printf("alloc new item of %d blocks\n", n);
     item_set_size(item, n);
     return item;
 }
@@ -474,7 +463,7 @@ mem_alloc(unsigned int x)
     unsigned int i;
     void *item;
     uintptr_t n = BLOCKS(x + HEADER_SIZE);
-    printf("\nMEM_ALLOC: x = %d, -> %" PRIuPTR " blocks needed\n", x, n);
+//    printf("\nMEM_ALLOC: x = %d, -> %" PRIuPTR " blocks needed\n", x, n);
 
     // stop loop: 
     // * size >= n && items != NULL
@@ -499,8 +488,8 @@ mem_alloc(unsigned int x)
     if (array.data[i].items == NULL)
     {
         item = alloc_new_item((unsigned int)array.data[i].size);
-        printf("allocated at size %" PRIuPTR " item with size %" PRIuPTR "\n",
-            array.data[i].size, item_get_size(item));
+//        printf("allocated at size %" PRIuPTR " item with size %" PRIuPTR "\n",
+//            array.data[i].size, item_get_size(item));
     }
     else
     {
@@ -508,8 +497,8 @@ mem_alloc(unsigned int x)
     }
     item = split_item(&array, i, item, n);
     item_set_in_use(item, 1);
-    print_item(item, "mem_alloc item");
-    print_array(&array);
+//    print_item(item, "mem_alloc item");
+//    print_array(&array);
     return item_get_area(item);
 }
 
@@ -517,7 +506,7 @@ void*
 item_get_buddy(struct array *array, void *item, unsigned int i, unsigned int *ibuddy)
 {
     uintptr_t size, buddy_size;
-    print_item(item, "get_buddy");
+//    print_item(item, "get_buddy");
     if (item_get_lr_bit(item) == LEFT)
     {
         *ibuddy = i + 3;
@@ -543,9 +532,9 @@ delete_item(struct array *array, unsigned int i, void *item)
     {
         curr = item_get_next(curr);
         if (curr != NULL) {
-            printf("curr=%p\n", curr);
+//            printf("curr=%p\n", curr);
             // DEBUG
-            print_item(curr, "curr");
+//            print_item(curr, "curr");
 //            if (cnt > 10) {
 //                exit(1);
 //            }
@@ -579,20 +568,20 @@ coalesce(struct array *array, unsigned int i)
     void *item, *buddy, *left, *right;
     boolean lr_bit, inh_bit;
     uintptr_t size;
-    printf("================= COALESCE BEGIN: i=%d\n", i);
+//    printf("================= COALESCE BEGIN: i=%d\n", i);
     item = array->data[i].items;
-    print_item(item, "item");
+//    print_item(item, "item");
     buddy = item_get_buddy(array, item, i, &ibuddy);
-    print_item(buddy, "buddy");
+//    print_item(buddy, "buddy");
     while (!item_is_in_use(buddy)    // !! don't coalesce if buddy not complete
         && array->data[ibuddy].size == item_get_size(buddy))
     {
-        printf("================= COALESCE: i: %d, ibuddy: %d\n", i, ibuddy);
+//        printf("================= COALESCE: i: %d, ibuddy: %d\n", i, ibuddy);
         //take_item(array, i);
         delete_item(array, i, item);
-        printf("item deleted\n");
+//        printf("item deleted\n");
         delete_item(array, ibuddy, buddy);
-        printf("buddy deleted\n");
+//        printf("buddy deleted\n");
         if (item_get_lr_bit(item) == LEFT)
         {
             left = item;
@@ -614,10 +603,10 @@ coalesce(struct array *array, unsigned int i)
         item_set_size(item, size);
         buddy = item_get_buddy(array, item, i, &ibuddy);
         insert_item(array, i, item);
-        print_item(item, "item");
-        print_item(buddy, "buddy");
+//        print_item(item, "item");
+//        print_item(buddy, "buddy");
     }
-    printf("================= COALESCE END\n");
+//    printf("================= COALESCE END\n");
 }
 
 void
@@ -627,16 +616,16 @@ mem_free(void *area)
     void *item;
     uintptr_t size;
     item = item_from_area(area);
-    printf("\nMEM_FREE: %04x\n", PTR_NUM(item));
+//    printf("\nMEM_FREE: %04x\n", PTR_NUM(item));
     size = item_get_size(item);
     i = 0;
     while (size != array.data[i].size)
     {
-        printf("MEM_FREE: i=%d size=%" PRIuPTR "\n", i, array.data[i].size);
+//        printf("MEM_FREE: i=%d size=%" PRIuPTR "\n", i, array.data[i].size);
         i++;
     }
     insert_item(&array, i, item);
-    print_item(item, "inserted");
+//    print_item(item, "inserted");
     coalesce(&array, i);
-    print_array(&array);
+//    print_array(&array);
 }
