@@ -1,0 +1,15 @@
+#+TITLE: Generalized Fibonacci Memory Allocator
+
+This is a simple memory allocator which uses generalized Fibonacci buddies,
+namely the sequence $1, 2, 3, 4, 5, 7, 10, 14...$ given by the formula
+$a_n =a_{n-1} + a_{n-4}$.
+
+Because I wanted to be sure that it doesn't work because of a bug or by
+chance, I wanted to make it to work with different sizes of the pointer.
+
+So this implementation should work with:
+ * GCC Linux 64-bit
+ * OpenWatcom ArcaOs 32-bit
+ * OpenWatcom DOS 16-bit
+
+This is still work in progress, so some things may change later.
