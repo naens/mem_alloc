@@ -41,6 +41,8 @@
 #define SIZE_2 3
 #define SIZE_3 4
 
+#else
+#error Unsupported Operating System, sorry.
 #endif
 
 #define BLOCK_SIZE 8
@@ -286,49 +288,46 @@ struct array {
 };
 
 
-/****f* mem/array_set_size, array_free
+/****f* mem/array_inc_size, array_free
  *  NAME
- *    array_set_size - set the size of the array
+ *    array_set_size - increase the size of the array by one
  *  SYNOPSIS
- *    void array_set_size(struct array *array, unsigned int new_size);
+ *    void array_inc_size(struct array *array, unsigned int new_size);
  *    struct array {
  *        struct cell *data;
  *        unsigned int size;
  *        unsigned int capacity;
  *    };
  *  DESCRIPTION
- *    The function array_set_size modifies the size of the array.  Usually it
- *    only increases the size of the array->size variable, but when the 
- *    requested size more than the current capacity, a new array is allocated,
+ *    The function array_inc_size increases the size of the array by 1.
+ *    Usually it only increases the size of the array->size variable, but when
+ *    the size becomes more than the current capacity, a new array is allocated,
  *    data is copied into it, and the old array is freed.  And, of course, a
  *    new capacity is assigned.
  *    When a new size is set, it is made sure that array->size is initialized.
  *    The function array_free frees the array and its data;
+ *  RETURN VALUE
+ *    This function does not return anything.
  *******
  */
 
 void
-array_set_size(struct array *array, unsigned int new_size)
+array_inc_size(struct array *array)
 {
-    if (new_size < array->size)
+    unsigned int i;
+    struct cell *new_data;
+    if (array->size == array->capacity)
     {
-        fprintf(stderr, "bad array size: %d\n", new_size);
-        exit(1);
-    }
-    if (new_size <= array->capacity)
-    {
-        array->size = new_size;
-    }
-    else
-    {
-        unsigned int new_capacity = max(2 * array->size, new_size);
-        struct cell *new_data = malloc(new_capacity * sizeof(struct cell));
+        array->capacity *= 2;
+        new_data = malloc(array->capacity * sizeof(struct cell));
         memcpy(new_data, array->data, array->size * sizeof(struct cell));
         free(array->data);
         array->data = new_data;
-        array->size = new_size;
-        array->capacity = new_capacity;
     }
+    array->size++;
+    i = array->size - 1;
+    array->data[i].size = array->data[i-1].size + array->data[i-4].size;
+    array->data[i].items = NULL;
 }
 
 
@@ -364,6 +363,7 @@ print_array(struct array *array)
 
 static struct array array;
 
+/* holds the lined list of the allocated elements from the OS */
 void *mem_list;
 
 void
@@ -372,6 +372,7 @@ mem_init()
     debug("memory initialization\n");
     array.data = malloc(4 * sizeof(struct cell));
     array.size = 4;
+    array.capacity = 4;
     array.data[0].size = MIN_SIZE;
     array.data[0].items = NULL;
     array.data[1].size = SIZE_1;
@@ -530,6 +531,9 @@ split_item(struct array *array, unsigned int i, void *item, uintptr_t n)
  *    also allocates a fake empty buddy, so that it does not merge more
  *    than it should.  It's a fake right buddy that is marked in use and,
  *    thus, stops the merging of buddies.
+ *    The whole thing is prefixed by a pointer in order to make it a
+ *    singly linked list, mem_list, which is used to free all the elements
+ *    allocated from the OS.
  *    The function is always passed the numbers of the generalized
  *    Fibonacci sequence in the n parameter.
  *  RETURN VALUE
@@ -581,6 +585,7 @@ mem_alloc(unsigned int x)
     unsigned int i;
     void *item, *area;
     uintptr_t n = BLOCKS(x + HEADER_SIZE);
+    debug("needed blocks: %d\n", n);
 
     // stop loop: 
     // * size >= n && items != NULL
@@ -595,15 +600,15 @@ mem_alloc(unsigned int x)
     {
         if (i == array.size - 1)
         {
-            array_set_size(&array, array.size + 1);
-            array.data[i+1].size = array.data[i].size + array.data[i-3].size;
-            array.data[i+1].items = NULL;
+            array_inc_size(&array);
         }
         i++;
     }
 
     if (array.data[i].items == NULL)
     {
+        i++;
+        array_inc_size(&array);
         item = alloc_new_item((unsigned int)array.data[i].size);
     }
     else
