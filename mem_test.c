@@ -7,6 +7,14 @@
 
 #include "mem.h"
 
+
+// constants for random test
+#define ARRAY_SIZE 200
+#define NUMBER_OF_ALLOCATIONS 1000
+#define MAXIMUM_ALLOC_SIZE 500
+
+
+
 void
 test_1()
 {
@@ -16,6 +24,7 @@ test_1()
     mem_free(a);
     mem_free(b);
 }
+
 
 void
 test_splitting()
@@ -37,6 +46,7 @@ test_splitting()
     mem_free(m50b);
 }
 
+
 void
 test_coalescing()
 {
@@ -57,6 +67,7 @@ test_coalescing()
     mem_free(m50);
 }
 
+
 void
 test_unsplittable()
 {
@@ -70,6 +81,7 @@ test_unsplittable()
     mem_free(m4b);
     mem_free(m10);
 }
+
 
 void
 fill_mem(unsigned char *buffer, unsigned int size)
@@ -88,6 +100,7 @@ fill_mem(unsigned char *buffer, unsigned int size)
     buffer[1] = (sum / 0x100) % 0x100;
 }
 
+
 void
 check_sum(unsigned char *buffer, unsigned int size)
 {
@@ -105,9 +118,6 @@ check_sum(unsigned char *buffer, unsigned int size)
     }
 }
 
-#define ARRAY_SIZE 20
-#define NUMBER_OF_ALLOCATIONS 10
-#define MAXIMUM_ALLOC_SIZE 50
 
 void
 print_area(unsigned char *buffer, unsigned int size)
@@ -123,6 +133,7 @@ print_area(unsigned char *buffer, unsigned int size)
     }
     printf("\n");
 }
+
 
 void
 test_random()
@@ -164,16 +175,14 @@ test_random()
         {
             sz = (unsigned int)((rand() % MAXIMUM_ALLOC_SIZE) + 1);
             fprintf(f, "    array[%d] = mem_alloc(%d);\n", i, sz);
-            array[i] = mem_alloc((int)sz);
+            array[i] = mem_alloc(sz);
             sizes[i] = sz;
             fill_mem((unsigned char*)array[i], sizes[i]);
-//            print_area(array[i], sizes[i]);
             count++;
         }
         else
         {
             fprintf(f, "    mem_free(array[%d]);\n", i);
-//            print_area(array[i], sizes[i]);
             check_sum(array[i], sizes[i]);
             mem_free(array[i]);
             array[i] = NULL;
@@ -182,7 +191,6 @@ test_random()
         {
             fprintf(f, "[%03d]: fill_mem sz=%d\n", j, sizes[j]);
             fill_mem((unsigned char*)array[j], sizes[j]);
-//            print_area(array[j], sizes[j]);
         }
         j = (j + 1) % ARRAY_SIZE;
     }
@@ -193,7 +201,6 @@ test_random()
         if (array[i] != NULL)
         {
             fprintf(f, "    mem_free(array[%d]);\n", i);
-//            print_area(array[i], sizes[i]);
             check_sum(array[i], sizes[i]);
             mem_free(array[i]);
         }
@@ -201,6 +208,7 @@ test_random()
     fprintf(f, "}\n");
     fclose(f);
 }
+
 
 void
 test_random_gen1()
@@ -217,6 +225,7 @@ test_random_gen1()
     array[1] = mem_alloc(438);
     mem_free(array[2]);
 }
+
 
 void
 test_random_gen2()
