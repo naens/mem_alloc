@@ -15,4 +15,4 @@ So this implementation should work with:
 Here is my kind of report after having completed this project:
 [[mem_alloc.org][mem_alloc.org]].
 
-And here is the [[github.com/naens/mem_alloc/docs][documentation]].
+And here is the [[https://naens.github.io/mem_alloc/][documentation]].
