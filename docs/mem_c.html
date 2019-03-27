@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html  xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Style-Type" content="text/css" />
+<meta http-equiv="Content-type" content="text/html; charset=ISO-8859-1" />
+<link rel="stylesheet" href="./robodoc.css" type="text/css" />
+<title>./mem.c</title>
+<!-- Source: ./mem.c -->
+<!-- Generated with ROBODoc Version 4.99.43 (Feb  2 2019) -->
+</head>
+<body>
+<div id="logo">
+<a name="robo_top_of_doc"></a>
+</div> <!-- logo -->
+<div id="navigation">
+<a class="menuitem" href="./toc_index.html#top">Table of Contents</a>
+<a class="menuitem" href="./robo_sourcefiles.html#top">Sourcefiles</a>
+<a class="menuitem" href="./masterindex.html#top">Index</a>
+<a class="menuitem" href="./robo_functions.html#top">Functions</a>
+<a class="menuitem" href="./robo_modules.html#top">Modules</a>
+<a class="menuitem" href="./robo_strutures.html#top">Structures</a>
+</div> <!-- navigation -->
+<div id="content">
+<h3>TABLE OF CONTENTS</h3>
+<ul>
+<li>1. <a href="#robo0">mem_alloc/mem</a></li>
+<ul>
+<li>1.1. <a href="#robo1">mem/alloc_new_item</a></li>
+<li>1.2. <a href="#robo2">mem/array_inc_size</a>, <a href="#robo2">array_free</a></li>
+<li>1.3. <a href="#robo3">mem/cell</a></li>
+<li>1.4. <a href="#robo4">mem/coalesce</a></li>
+<li>1.5. <a href="#robo5">mem/delete_item</a></li>
+<li>1.6. <a href="#robo6">mem/insert_item</a></li>
+<li>1.7. <a href="#robo7">mem/item_get_buddy</a></li>
+<li>1.8. <a href="#robo8">mem/mem_alloc</a></li>
+<li>1.9. <a href="#robo9">mem/mem_free</a></li>
+<li>1.10. <a href="#robo10">mem/split_item</a></li>
+<li>1.11. <a href="#robo11">mem/take_item</a></li>
+</ul>
+</ul>
+<hr />
+<a name="mem5falloc2fmem"></a>
+<a name="robo0"></a><h2>mem_alloc/mem [ Modules ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="./robo_modules.html#robo_top_of_doc">Modules</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>mem</strong> - Generalized Fibonacci Memory Allocator
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    A simple Fibonacci memory allocator.  Uses blocks of size 8.
+    The sequence is 1, 2, 3, 4, 5, 7, 10, 14, 19, 26..., where
+    a(n) = a(n-1) + a(n-4).
+    Its functions are
+    * void mem_init() to initialize the allocator
+    * void *<a href="#robo8">mem_alloc</a>(unsigned int n) to initialize n bytes
+    * void <a href="#robo9">mem_free</a>(void *area) to free a previously allocated area
+    * void mem_finalize() to finalize the allocator
+</pre>
+
+<hr />
+<a name="mem2falloc5fnew5fitem"></a>
+<a name="robo1"></a><h2>mem/alloc_new_item [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>alloc_new_item</strong> - allocate a new item from the OS
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void *<strong>alloc_new_item</strong>(unsigned int n);
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    The function <strong>alloc_new_item</strong> allocates a new item of n blocks.  It
+    also allocates a fake empty buddy, so that it does not merge more
+    than it should.  It's a fake right buddy that is marked in use and,
+    thus, stops the merging of buddies.
+    The whole thing is prefixed by a pointer in order to make it a
+    singly linked list, mem_list, which is used to free all the elements
+    allocated from the OS.
+    The function is always passed the numbers of the generalized
+    Fibonacci sequence in the n parameter.
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    This function returns the address of new item allocated.
+</pre>
+
+<hr />
+<a name="mem2farray5finc5fsize"></a>
+<a name="robo2"></a><h2>mem/array_inc_size, array_free [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    array_set_size - increase the size of the array by one
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void <strong>array_inc_size</strong>(struct array *array, unsigned int new_size);
+    struct array {
+        struct <a href="#robo3">cell</a> *data;
+        unsigned int size;
+        unsigned int capacity;
+    };
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    The function <strong>array_inc_size</strong> increases the size of the array by 1.
+    Usually it only increases the size of the array-&gt;size variable, but when
+    the size becomes more than the current capacity, a new array is allocated,
+    data is copied into it, and the old array is freed.  And, of course, a
+    new capacity is assigned.
+    When a new size is set, it is made sure that array-&gt;size is initialized.
+    The function <strong>array_free</strong> frees the array and its data;
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    This function does not return anything.
+</pre>
+
+<hr />
+<a name="mem2fcell"></a>
+<a name="robo3"></a><h2>mem/cell [ Structures ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_strutures.html#robo_top_of_doc">Structures</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    struct <strong>cell</strong> - a <strong>cell</strong> of the array
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    The array that contains free lists orders them by size.
+    Each size is a number of the genearalized Fibonacci sequence.
+    A <strong>cell</strong> contains a pointer to a linked list of items of the
+    same size.
+</pre>
+
+<hr />
+<a name="mem2fcoalesce"></a>
+<a name="robo4"></a><h2>mem/coalesce [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>coalesce</strong> - merge buddies until an buddy in use is found.
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    The <strong>coalesce</strong> function makes the opposite of splitting: it merges buddies
+    that are not in use, and stop when it finds a buddy which is in use,
+    which will happen sooner or later because the item at the top had a fake
+    buddy which is in use.
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void <strong>coalesce</strong>(struct array *array, unsigned int);
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    This function returns nothing.
+</pre>
+
+<hr />
+<a name="mem2fdelete5fitem"></a>
+<a name="robo5"></a><h2>mem/delete_item [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>delete_item</strong> - delete an item from the free list at a specified index
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void <strong>delete_item</strong>(struct array *array, unsigned int i, void *item);
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    The function <strong>delete_item</strong> deletes one item, which it finds by address,
+    from the free list specified by the index i in the array.
+    It deletes in two distinct steps: first it finds the item, then it
+    deletes it.  The delete operation is like a normal delete operation
+    from a doubly linked list, except that if it's the first item, then
+    the entry in the array is modified to point to the new head
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    Does not return anything
+</pre>
+
+<hr />
+<a name="mem2finsert5fitem"></a>
+<a name="robo6"></a><h2>mem/insert_item [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>insert_item</strong> - insert the item into the array
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void <strong>insert_item</strong>(struct array *array, unsigned int i, void *item);
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    Inserts the item into the free list at i as the first element.
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    This function returns nothing.
+</pre>
+
+<hr />
+<a name="mem2fitem5fget5fbuddy"></a>
+<a name="robo7"></a><h2>mem/item_get_buddy [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>item_get_buddy</strong> - given an item, return its buddy
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>  void *<strong>item_get_buddy</strong>(struct array *array, void *item, unsigned int i,
+      unsigned int *ibuddy);
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    Calculates the address of the buddy and returns it.  It uses the fact
+    that the free list containing the size of the buddy is either 3 cells
+    to the left or 3 cells to the right, depending on whether the item is
+    is a left or the right buddy.  Then, knowing the size, it's easy to
+    know the location of the buddy.
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    The address of the buddy.  It also sets the address pointed by
+    ibuddy, which storing the index in the array containing lists of 
+    the size of the buddy.
+</pre>
+
+<hr />
+<a name="mem2fmem5falloc"></a>
+<a name="robo8"></a><h2>mem/mem_alloc [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>mem_alloc</strong> - allocate an area block of a minumum number of bytes 
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void *<strong>mem_alloc</strong>(unsigned int x)
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    Allocates minimum x bytes.  First it finds the right location, which is
+    either the first free item with the number of blocks required, or a
+    newly allocated block.
+
+    Then it splits the item if it can be split, that is the number of blocks
+    needed is less or equal to a generalized Fibonacci number before the
+    block found in the previous step.
+
+    Then it set the in_use bit of the item and return the area of the item.
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    An area of minimum x bytes.
+</pre>
+
+<hr />
+<a name="mem2fmem5ffree"></a>
+<a name="robo9"></a><h2>mem/mem_free [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>mem_free</strong> - put the item back into the free list
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void <strong>mem_free</strong>(void *area)
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    Return the item after use to the free list.  The first thing is to
+    get the item from the address from the area.  As the header has always
+    the same size, it's easy.  Using the header, it's easy to find the size,
+    and, having found the size we can find the index because the array has a
+    size for each <a href="#robo3">cell</a>.
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    Does not return anything.
+</pre>
+
+<hr />
+<a name="mem2fsplit5fitem"></a>
+<a name="robo10"></a><h2>mem/split_item [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>split_item</strong> - split an item until of the requested size is created
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>      void* <strong>split_item</strong>(struct array *array, unsigned int i, void *item,
+          uintptr_t n)
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>      This function is given the number of blocks requested, an item,
+      and the index of the free list corresponding to its size in the
+      array.  The purpose is to reduce the size of the item by
+      splitting it into two buddies and inserting one of them in the
+      free list, until we get an item as small as possible that can
+      hold n blocks.
+
+      So, at each step we check if the item needs to be split, split
+      it, determine if we want to use the left buddy or the right
+      buddy, and continue the loop, which this time checks the buddy
+      we have chosen and so on.  The buddy that is not used is
+      inserted back into the free list.
+</pre>
+
+<hr />
+<a name="mem2ftake5fitem"></a>
+<a name="robo11"></a><h2>mem/take_item [ Functions ]</h2>
+
+<p>[ <a href="#robo_top_of_doc">Top</a> ] [ <a href="#robo0">mem</a> ] [ <a href="./robo_functions.html#robo_top_of_doc">Functions</a> ]</p>
+<p class="item_name">NAME</p>
+<pre>    <strong>take_item</strong> - delete the first item from a free list and return it
+</pre>
+<p class="item_name">SYNOPSIS</p>
+<pre>    void *<strong>take_item</strong>(struct array *array, unsigned int i);
+</pre>
+<p class="item_name">DESCRIPTION</p>
+<pre>    Deletes the first item from the free list at index i in the array.
+    It should be checked before calling this function that there is
+    at least one item in the array, that is, array-&gt;data[i].items is
+    not NULL.
+</pre>
+<p class="item_name">RETURN VALUE</p>
+<pre>    Returns the first item from the specified free list.
+</pre>
+
+</div> <!-- content -->
+<div id="footer">
+<p>Generated from ./mem.c with <a href="http://www.xs4all.nl/~rfsber/Robo/robodoc.html">ROBODoc</a> V4.99.43 on Wed Mar 27 2019 17:46:10
+</p>
+</div> <!-- footer -->
+</body>
+</html>
