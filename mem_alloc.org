@@ -1,0 +1,285 @@
+#+TITLE: Generalized Fibonacci Memory Allocator
+
+* Introduction
+So, I made this new little project, which initially had to be just a
+module to be used for other applications, but it turned out to be a
+slightly more complex than expected.  So I decided to dedicate a whole
+repository to this memory allocator.
+
+* Overview
+This is a generalized Fibonacci memory Allocator.  That means that
+there are multliple free lists grouped in an array and ordered by
+sizes, which follow a generalized Fibonacci sequence.  In this case
+it's 1, 2, 3, 4, 5, 7, 10 ,14, 19, 26, 36..., and so on where a_n =
+a_{n-1} + a_{n-4}.  Also, the sequence does not have to begin from the
+first element.
+
+It's a buddy-based allocator.  Each item has a buddy, and two buddies
+can be combined into a single item.
+
+* Data Structures
+** Array
+The top data structure is a dynamic array.  At first it's allocated
+small, because not every program needs to allocate a lot of memory.
+But because the user might want more memory, the array is copied into
+a larger array, and the original array is freed. 
+
+Yes, to allocate and deallocate data I use the functions provided by
+the OS.  The trick is to ask only for large amounts and as little as
+possible, because you might never know if the allocator of the OS is
+good enough.  In this case I use Linux, which does not have such
+problems, but it's an example app, made to test the algorithm so that
+I can port the allocator algorithm to other operating systems and so
+on.  It would even work on something like CP/M, which does not have a
+memory allocator, you just have some KB of space that you can use
+however you want.  So in my example, I would replace the calls to the
+OS memory allocator by just returning a piece of this big chunk of
+memory.
+
+As for freeing of the dynamic array, there can be different solutions.
+For exaple, if you use a linked list of arrays, you don't need to
+free: you put a pointer to the next array, but this way, of course
+it's more difficult to navigate the array.  Another solution would be
+to just leave the old array and not use it.  Yet another solution
+would be to use our own allocator for the array.  So, first we have a
+small array, big enough to have a first allocation.  Then we allocate
+the element and put it in the free list.  We copy the array there, and
+that's it.  If we need a bigger array, we ask from the OS.  When we
+need to free our old array, we can because our new array is already
+allocated and ready to be used.  If you think about it, we don't even
+need the initial array: we just allocate an item from the OS and put
+the initial array in that space.
+
+But here I didn't do such things.  I made everything really simple.
+
+** Cells
+Another data structure is the cell.  A cell contains the size, which
+is a number from the generalized Fibonacci sequence and a pointer to a
+free list of that size.  The cells will be in the array, and they will
+be ordered according to the sequence.
+#+BEGIN_SRC c
+struct cell {
+    uintptr_t size;
+    void *items;
+};
+#+END_SRC
+
+The array has a size field, which represents how many usable cells it
+contains.  When the size of the array is increased, the cells are
+filled with corresponding numbers from the sequence.
+#+BEGIN_SRC c
+struct array {
+    struct cell *data;
+    unsigned int size;
+    unsigned int capacity;
+};
+#+END_SRC
+
+All items in a free list, which come from one cell have the same size.
+This way it's easy to allocate a certain amount of blocks: just go
+through the array and find the cell which contains the size bigger or
+equal than requested.
+
+So, here is an example of an array, in order to visualize:
+| Index | cell->size | cell->data       |
+|-------+------------+------------------|
+|     0 |          3 | null             |
+|     1 |          4 | item->null       |
+|     2 |          5 | null             |
+|     3 |          7 | item->item->null |
+|-------+------------+------------------|
+
+
+** Blocks
+The numbers in the generalized Fibonacci sequence correspond to the
+number of blocks contained in every item of the free list of that
+size.  The blocks are always 8 bytes.
+
+** Items
+Free lists are doubly linked lists, where each node represents a
+memory area that can be returned.  In my implementation I call nodes
+items.  Each such item has a header, which contains the size of the
+total size of the item in blocks and 3 bits: ~lr_bit~, ~inh~bit~, and
+~in_use~ bit.
+
+When the item is in a free list, its ~in_use_~ bit is 0, but when it's
+used by the user, the ~in_use~ bit is set to 1.
+
+The ~lr_bit~ tells whether the item is a right buddy or a left buddy.
+Items can be split into a left buddy and a right buddy, and the left
+and the right buddy can be merged together.
+
+The ~inh_bit~ comes from the parent item.  It is used in order to
+restore the ~lr_bit~ of the parent when two buddies are merged.  When
+the buddies are split, the left buddy inherits the ~lr_bit~ of the
+parent, and the right buddy inherits the ~inh_bit~ of the parent.  So,
+when buddies are combined, the parent can restore its ~lr_bit~ and its
+~inh_bit~.
+
+When not in use, the area of the item after the header is used to hold
+the previous and the next pointers for the doubly linked list.
+
+* Functions
+So now I'll explain how the main functions work, namely allocation and
+deallocation.  But before that I would like to mention two other of
+the main functions: ~mem_init~ and ~mem_finalize~.  In my implementation
+they are really simple, and all they can do is they initialize and
+free the data.
+
+The initialization function sets the first four items of the array, so
+from these four items it can calculate all the other items.
+
+The finalization function returns all allocated elements to the OS.
+In order to track them every allocated element is made into a linked
+list node, where the first bytes that can hold a pointer hold a
+pointer to the next.  Every new element is prepended, make it a singly
+linked list.  So when freeing the list all I have to do is follow this
+list and free the elements one by one.
+
+** Allocation
+Now, this is how the allocation works: first we look for an element in
+the free list which has enough blocks to hold the number of bytes we
+requested.  If we have not found, we ask from the OS.  Each time we
+ask at least the next number: we don't ask for smaller numbers or the
+same number multiple times: it's in order to keep the number of the OS
+allocations as small as possible.
+
+Then, when we have something which can hold our amount of bytes, we
+should try to split the item: perhaps it's too big, so we have to take
+the smallest possible in orer to hold our bytes.  We split it as I
+described earlier, using the buddy system.
+
+** Deallocation
+And this is how deallocation works.  First, we are given an area, by
+which we find the header of the item.  It is not difficult because the
+header is of constant size.  Then from the header we retrieve the size
+of the block, using which we can find the right index in the array.
+Before inserting, we mark the item as not in use.
+
+After we insert the deallocated item into the array, we have to merge
+free buddies if we find some.  This is done using the ~coalesce~
+function.
+
+The ~coalesce~ function is a loop: it looks if there is a free buddy
+for the item, if so, then merges them.  Then continues by looking for
+a buddy for the new merged item and so on, until it finds a buddy that
+is in use, which it will find, since the buddy of the root is a fake
+buddy which is empty and which was marked as in use.
+
+* Tests
+In order to test the memory allocator I have created a number of
+tests.  These tests are located in the ~mem_test.c~ file.  There are
+some tests that test a specific feature, and one test that generates
+random sequence of action based on the paramters.
+
+* Portability
+In my implementation I tried to isolate parameters which could be
+modified.  For example, if the size of the pointers changes, then the
+number of bytes in the header changes because it's the same as the
+size of a pointer.  Also the are changes, because it has to contain
+two pointers.  But the number of bytes in a block doesn't change,
+which it so that there are different configurations for different
+sizes of the pointer.
+
+So, this is how I implemented it for pointers of 64 bits, 32 bits and
+16 bits:
+| Pointer size | Area Size | Minimum Item Size | Minumum blocks | First index |
+|--------------+-----------+-------------------+----------------+-------------|
+| 8 bytes      | 16 bytes  | 24 bytes          |              3 |           3 |
+| 4 bytes      | 8 bytes   | 16 bytes          |              2 |           2 |
+| 2 bytes      | 4 bytes   | 8 bytes           |              1 |           1 |
+|--------------+-----------+-------------------+----------------+-------------|
+
+So here is how we get the minimal sizes in the array.  In a 64-bit
+system, the array starts at index 0 which contains a free list of 3
+blocks.  But for 32-bytes, it can be 2 blocks, and 16-bytes can start
+at 1 block.
+
+In order to implement these differences I created different defines,
+one set for each of the pointer sizes.  Here is an example for the
+64-bit system:
+#+BEGIN_SRC c
+/* 64-bit OS */
+#if defined(__x86_64__)
+#define MIN_SIZE 3
+#define SIZE_1 4
+#define SIZE_2 5
+#define SIZE_3 7
+#+END_SRC
+
+Then it continues similarly for the other:
+
+#+BEGIN_SRC c
+/* 32-bit OS */
+#elif defined(__386__) || defined(__i386__) || defined(__DJGPP__)
+#define MIN_SIZE 2
+#define SIZE_1 3
+#define SIZE_2 4
+#define SIZE_3 5
+
+/* 16-bit OS */
+#elif defined(__I86__) || defined(__86__)
+#define MIN_SIZE 1
+#define SIZE_1 2
+#define SIZE_2 3
+#define SIZE_3 4
+
+#else
+#error Unsupported Operating System, sorry.
+#endif
+#+END_SRC
+
+So, this is more or less what I described in the table.  I also
+generate an error if there is an unknown pointer size that I cannot
+determine.
+
+In order to be sure that my defines work, I thought it would be a good
+idea to test the program not only on a 64-bit system, but also 32-bit
+and 16-bit.  In order to do so this is what I did.
+
+First I installed multilib on Linux.  It allows to use a 32-bit GCC
+compiler and run 32-bit code.  After the installation it's really
+easy.  The only thing that changes is the ~-m32~ option.
+
+Here is my ~GNUmakefile~:
+#+BEGIN_SRC makefile
+CFLAGS=-g -O0 -Wall -fstrict-aliasing -Wstrict-aliasing -Wconversion
+
+.PHONY: all
+all: mem_test mem_test32
+
+mem_test: mem_test.c mem.c
+	gcc $(CFLAGS) mem_test.c mem.c -o mem_test
+
+mem_test32: mem_test.c mem.c
+	gcc $(CFLAGS) -m32 mem_test.c mem.c -o mem_test32
+
+.PHONY: clean
+clean:
+	rm -f *.o mem_test mem_test32
+#+END_SRC
+
+And it works.  By the output of the program I can see that the 32-bit
+pointers are used.
+
+Then I tried on a 32-bit OS, the Hurd.  And yes, it also worked.
+
+In order to do more tests I made it so that it compiles under
+OpenWatcom v2.0 C compiler.  So, using Linux I compiled 32-bit Linux,
+DOS, and ArcaOS binaries.  OpenWatcom can also generate 16-bit DOS
+binaries, which is interesting because it allows me to test the
+program with yet another set of parameters.
+
+So I tested in on ArcaOS, which is a 32-bit Operating System, and it
+seems to work fine.  Which is interesting is that ArcaOS can also run
+DOS programs.  So I tested both the 32-bit and the 16-bit binaries.
+Worked very well.  It really amazes me that one single OS has so many
+modes of running software, and it was so long ago...
+
+Of course I also tested on an emulator, /qemu/, running FreeDOS.  Both
+binaries worked.
+
+
+* End
+So, this is the end of this quick post about my little memory
+allocator.  As you can see it's really simple.

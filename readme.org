@@ -12,4 +12,7 @@ So this implementation should work with:
  * OpenWatcom ArcaOs 32-bit
  * OpenWatcom DOS 16-bit
 
-This is still work in progress, so some things may change later.
+Here is my kind of report after having completed this project:
+[[mem_alloc.org][mem_alloc.org]].
+
+And here is the [[github.com/naens/mem_alloc/docs][documentation]].
