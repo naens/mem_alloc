@@ -8,7 +8,7 @@ repository to this memory allocator.
 
 * Overview
 This is a generalized Fibonacci memory Allocator.  That means that
-there are multliple free lists grouped in an array and ordered by
+there are multiple free lists grouped in an array and ordered by
 sizes, which follow a generalized Fibonacci sequence.  In this case
 it's 1, 2, 3, 4, 5, 7, 10 ,14, 19, 26, 36..., and so on where a_n =
 a_{n-1} + a_{n-4}.  Also, the sequence does not have to begin from the
@@ -37,7 +37,7 @@ OS memory allocator by just returning a piece of this big chunk of
 memory.
 
 As for freeing of the dynamic array, there can be different solutions.
-For exaple, if you use a linked list of arrays, you don't need to
+For example, if you use a linked list of arrays, you don't need to
 free: you put a pointer to the next array, but this way, of course
 it's more difficult to navigate the array.  Another solution would be
 to just leave the old array and not use it.  Yet another solution
@@ -99,7 +99,7 @@ size.  The blocks are always 8 bytes.
 Free lists are doubly linked lists, where each node represents a
 memory area that can be returned.  In my implementation I call nodes
 items.  Each such item has a header, which contains the size of the
-total size of the item in blocks and 3 bits: ~lr_bit~, ~inh~bit~, and
+total size of the item in blocks and 3 bits: ~lr_bit~, ~inh_bit~, and
 ~in_use~ bit.
 
 When the item is in a free list, its ~in_use_~ bit is 0, but when it's
@@ -146,7 +146,7 @@ allocations as small as possible.
 
 Then, when we have something which can hold our amount of bytes, we
 should try to split the item: perhaps it's too big, so we have to take
-the smallest possible in orer to hold our bytes.  We split it as I
+the smallest possible in order to hold our bytes.  We split it as I
 described earlier, using the buddy system.
 
 ** Deallocation
@@ -170,7 +170,7 @@ buddy which is empty and which was marked as in use.
 In order to test the memory allocator I have created a number of
 tests.  These tests are located in the ~mem_test.c~ file.  There are
 some tests that test a specific feature, and one test that generates
-random sequence of action based on the paramters.
+random sequence of action based on the parameters.
 
 * Portability
 In my implementation I tried to isolate parameters which could be
@@ -183,7 +183,7 @@ sizes of the pointer.
 
 So, this is how I implemented it for pointers of 64 bits, 32 bits and
 16 bits:
-| Pointer size | Area Size | Minimum Item Size | Minumum blocks | First index |
+| Pointer size | Area Size | Minimum Item Size | Minimum blocks | First index |
 |--------------+-----------+-------------------+----------------+-------------|
 | 8 bytes      | 16 bytes  | 24 bytes          |              3 |           3 |
 | 4 bytes      | 8 bytes   | 16 bytes          |              2 |           2 |
