@@ -70,7 +70,7 @@
 #define boolean int
 
 
-#define MEM_ALLOC_DEBUG 1
+#define MEM_ALLOC_DEBUG 0
 
 
 static inline void
@@ -344,8 +344,9 @@ array_inc_size(struct array *array)
         
         if (j == 0)
         {
-            debug("needed blocks: %d\n", n);
-            data_item = alloc_new_item((unsigned int)n);
+            uintptr_t sz = array->data[k - 1].size + array->data[k - 4].size;
+            debug("array_inc_size: needed blocks: %d, alloc %d\n", n, (int)sz);
+            data_item = alloc_new_item((unsigned int)sz);
         }
         else
         {
@@ -354,7 +355,7 @@ array_inc_size(struct array *array)
         }
         item_set_in_use(data_item, 1);
         new_data = item_get_area(data_item);
-        debug("array_inc_size: %d bytes\n", (int)(array->size * sizeof(struct cell)));
+        debug("array_inc_size: memcpy %d bytes\n", (int)(array->size * sizeof(struct cell)));
         memcpy(new_data, array->data, array->size * sizeof(struct cell));
         old_data = array->data;
         array->data = new_data;
@@ -643,7 +644,7 @@ mem_alloc(unsigned int x)
     unsigned int i;
     void *item, *area;
     uintptr_t n = BLOCKS(x + HEADER_SIZE);
-    debug("needed blocks: %d\n", n);
+    debug("mem_alloc: needed blocks: %d\n", n);
 
     // stop loop: 
     // * size >= n && items != NULL
@@ -851,6 +852,7 @@ mem_free(void *area)
     i = 0;
     while (size != array.data[i].size)
     {
+        if (i > 50) exit(1);
         i++;
     }
     item_set_in_use(item, 0);
