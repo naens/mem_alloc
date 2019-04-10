@@ -674,7 +674,7 @@ mem_alloc(unsigned int x)
         item = take_item(&array, i);
     }
 
-    item = split_item(&array, i, item, n);  //TODO move to only not NULL case?
+    item = split_item(&array, i, item, n);
     item_set_in_use(item, 1);
     area = item_get_area(item);
     debug("allocated %d bytes at %p\n", x, area);
