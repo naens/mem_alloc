@@ -19,6 +19,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include "mem.h"
 
 /* 64-bit OS */
 #if defined(__x86_64__)
@@ -26,6 +27,9 @@
 #define SIZE_1 4
 #define SIZE_2 5
 #define SIZE_3 7
+#define DATA_INIT_BLOCKS 19
+#define ARRAY_INIT_SIZE 7
+#define ARRAY_INIT_CAPACITY 8
 
 /* 32-bit OS */
 #elif defined(__386__) || defined(__i386__) || defined(__DJGPP__)
@@ -33,6 +37,9 @@
 #define SIZE_1 3
 #define SIZE_2 4
 #define SIZE_3 5
+#define DATA_INIT_BLOCKS 10
+#define ARRAY_INIT_SIZE 6
+#define ARRAY_INIT_CAPACITY 8
 
 /* 16-bit OS */
 #elif defined(__I86__) || defined(__86__)
@@ -40,6 +47,9 @@
 #define SIZE_1 2
 #define SIZE_2 3
 #define SIZE_3 4
+#define DATA_INIT_BLOCKS 3
+#define ARRAY_INIT_SIZE 4
+#define ARRAY_INIT_CAPACITY 4
 
 #else
 #error Unsupported Operating System, sorry.
@@ -58,14 +68,6 @@
 #define PTR_NUM(ptr) ((unsigned int)(((uintptr_t)ptr) % 0x1000))
 
 #define boolean int
-
-
-#ifndef max
-#define max(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
-     _a > _b ? _a : _b; })
-#endif /* max */
 
 
 #define MEM_ALLOC_DEBUG 1
@@ -311,18 +313,52 @@ struct array {
  *******
  */
 
+void*
+alloc_new_item(unsigned int n);
+void*
+take_item(struct array *array, unsigned int i);
+void*
+split_item(struct array *array, unsigned int i, void *item, uintptr_t n);
+
 void
 array_inc_size(struct array *array)
 {
-    unsigned int i;
-    struct cell *new_data;
+    unsigned int i, j, k;
+    void *data_item;
+    uintptr_t n;
+    struct cell *new_data, *old_data;
     if (array->size == array->capacity)
     {
         array->capacity *= 2;
-        new_data = malloc(array->capacity * sizeof(struct cell));
+
+        n = BLOCKS(array->capacity * sizeof(struct cell) + HEADER_SIZE);
+        j = 0;
+        for (k = 0; k < array->size; k++)
+        {
+            if (array->data[k].size >= n && array->data[k].items != NULL)
+            {
+                j = k;
+                break;
+            }
+        }
+        
+        if (j == 0)
+        {
+            debug("needed blocks: %d\n", n);
+            data_item = alloc_new_item((unsigned int)n);
+        }
+        else
+        {
+            data_item = take_item(array, j);
+            data_item = split_item(array, j, data_item, n);
+        }
+        item_set_in_use(data_item, 1);
+        new_data = item_get_area(data_item);
+        debug("array_inc_size: %d bytes\n", (int)(array->size * sizeof(struct cell)));
         memcpy(new_data, array->data, array->size * sizeof(struct cell));
-        free(array->data);
+        old_data = array->data;
         array->data = new_data;
+        mem_free(old_data);
     }
     array->size++;
     i = array->size - 1;
@@ -367,28 +403,49 @@ static struct array array;
 void *mem_list;
 
 void
+array_init(struct array *array)
+{
+    unsigned int i;
+    uintptr_t prev;
+
+    void *data_item = alloc_new_item(DATA_INIT_BLOCKS);
+    item_set_in_use(data_item, 1);
+    array->data = item_get_area(data_item);
+
+    array->data[0].size = MIN_SIZE;
+    array->data[0].items = NULL;
+    array->data[1].size = SIZE_1;
+    array->data[1].items = NULL;
+    array->data[2].size = SIZE_2;
+    array->data[2].items = NULL;
+    array->data[3].size = SIZE_3;
+    array->data[3].items = NULL;
+    
+    prev = array->data[3].size;
+    for (i = 4; i < ARRAY_INIT_SIZE; i++)
+    {
+        array->data[i].size = prev + array->data[i-4].size;
+        array->data[i].items = NULL;
+        prev = array->data[i].size;
+    }
+
+    array->size = ARRAY_INIT_SIZE;
+    array->capacity = ARRAY_INIT_CAPACITY;
+}
+
+void
 mem_init()
 {
     debug("memory initialization\n");
-    array.data = malloc(4 * sizeof(struct cell));
-    array.size = 4;
-    array.capacity = 4;
-    array.data[0].size = MIN_SIZE;
-    array.data[0].items = NULL;
-    array.data[1].size = SIZE_1;
-    array.data[1].items = NULL;
-    array.data[2].size = SIZE_2;
-    array.data[2].items = NULL;
-    array.data[3].size = SIZE_3;
-    array.data[3].items = NULL;
     mem_list = NULL;
+    array_init(&array);
 }
 
 
 void
 mem_finalize()
 {
-    free(array.data);
+    array.data = NULL;
 
     // free all allocated blocks
     while (mem_list != NULL)
@@ -545,6 +602,7 @@ void*
 alloc_new_item(unsigned int n)
 {
     void *tmp, *fake_right, *item;
+    debug("alloc_new_item: allocate %d blocks, %d bytes\n", n, (int)(BLOCK_SIZE * n + sizeof(void*)*2));
     tmp = malloc(BLOCK_SIZE * n + sizeof(void*)*2);
     *((void**)tmp) = mem_list;
     mem_list = tmp;
@@ -616,7 +674,7 @@ mem_alloc(unsigned int x)
         item = take_item(&array, i);
     }
 
-    item = split_item(&array, i, item, n);
+    item = split_item(&array, i, item, n);  //TODO move to only not NULL case?
     item_set_in_use(item, 1);
     area = item_get_area(item);
     debug("allocated %d bytes at %p\n", x, area);
