@@ -18,7 +18,8 @@
 void
 test_1()
 {
-    void *a, *b;
+    void *a;
+    void *b;
     a = mem_alloc(100);
     b = mem_alloc(40);
     mem_free(a);
@@ -109,8 +110,8 @@ fill_mem(unsigned char *buffer, unsigned int size)
         p[i] = (unsigned char)(rand() % 0x100);
         sum += p[i];
     }
-    buffer[0] = sum % 0x100;
-    buffer[1] = (sum / 0x100) % 0x100;
+    buffer[0] = (unsigned char)(sum % 0x100);
+    buffer[1] = (unsigned char)((sum / 0x100) % 0x100);
 }
 
 
@@ -260,13 +261,13 @@ main(int argc, char **argv)
     mem_init();
 
     test_1();
-    test_2();
-    test_splitting();
-    test_coalescing();
-    test_unsplittable();
-    test_random();
-    test_random_gen1();
-    test_random_gen2();
+//    test_2();
+//    test_splitting();
+//    test_coalescing();
+//    test_unsplittable();
+//    test_random();
+//    test_random_gen1();
+//    test_random_gen2();
 
     mem_finalize();
     return 0;
