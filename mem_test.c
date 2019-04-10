@@ -9,8 +9,8 @@
 
 
 // constants for random test
-#define ARRAY_SIZE 200
-#define NUMBER_OF_ALLOCATIONS 1000
+#define ARRAY_SIZE 800
+#define NUMBER_OF_ALLOCATIONS 100000
 #define MAXIMUM_ALLOC_SIZE 5000
 
 
@@ -254,20 +254,28 @@ test_random_gen2()
     mem_free(array[9]);
 }
 
+void
+test_random_gen3()
+{
+    void *array[25];
+    array[18] = mem_alloc(2493);
+    mem_free(array[18]);
+}
 
 int
 main(int argc, char **argv)
 {
     mem_init();
 
-    test_1();
+//    test_1();
 //    test_2();
 //    test_splitting();
 //    test_coalescing();
 //    test_unsplittable();
-//    test_random();
+    test_random();
 //    test_random_gen1();
 //    test_random_gen2();
+//    test_random_gen3();
 
     mem_finalize();
     return 0;
