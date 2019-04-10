@@ -17,3 +17,4 @@ test
 *.autosave
 *.creator.user
 *.iml
+vgcore.*
