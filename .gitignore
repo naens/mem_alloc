@@ -9,3 +9,11 @@ test
 *.exe
 *.pdf
 *.tex
+*.config
+*.creator
+*.files
+*.includes
+.idea
+*.autosave
+*.creator.user
+*.iml
