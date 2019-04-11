@@ -403,6 +403,24 @@ static struct array array;
 /* holds the lined list of the allocated elements from the OS */
 void *mem_list;
 
+
+/****f* mem/array_init
+ *  NAME
+ *    array_init - initialize the array
+ *  SYNOPSIS
+ *    void array_init(struct array *array)
+ *  DESCRIPTION
+ *    This function is called during the initialization of the memory.  It
+ *    allocates an initial space for the array and creates a minimal array
+ *    inside of it.  When the array needs to be resized, another space is
+ *    allocated and the array is copied there.  The old area, that
+ *    contained the previous version of the array is inserted into the
+ *    array and can be reused.
+ *  RETURN VALUE
+ *    This function does not return any value.
+ ******
+ */
+
 void
 array_init(struct array *array)
 {
@@ -434,6 +452,24 @@ array_init(struct array *array)
     array->capacity = ARRAY_INIT_CAPACITY;
 }
 
+
+/****f* mem/mem_init
+ *  NAME
+ *    mem_init - initialize the memory
+ *  SYNOPSIS
+ *    void mem_init()
+ *  DESCRIPTION
+ *    This function needs to be called in order to use the memory
+ *    allocator.  Its main duty is to initialize mem_list and the array.
+ *    The global variable mem_list contains a linked all the memory
+ *    chunks that have been returned by the Operating System, so that
+ *    they can be returned, not every OS guarantees that everything will
+ *    be returned if there are memory areas which are not freed.
+ *  RETURN VALUE
+ *    No value is returned.
+ ******
+ */
+
 void
 mem_init()
 {
@@ -442,6 +478,21 @@ mem_init()
     array_init(&array);
 }
 
+
+/****f* mem/mem_finalize
+ *  NAME
+ *    mem_finalize - return all memory used by the allocator to the OS
+ *  SYNOPSIS
+ *    void mem_finalize()
+ *  DESCRIPTION
+ *    The function mem_finalize is called by the user after having
+ *    finished using the memory allocator.  This function goes through
+ *    every item in the mem_list and returns it to the Operating System
+ *    by calling the free function.
+ *  RETURN VALUE
+ *    Nothing is returned by this function.
+ ******
+ */
 
 void
 mem_finalize()
@@ -463,7 +514,7 @@ mem_finalize()
  *  NAME
  *    take_item - delete the first item from a free list and return it
  *  SYNOPSIS
- *    void *take_item(struct array *array, unsigned int i);
+ *    void *take_item(struct array *array, unsigned int i)
  *  DESCRIPTION
  *    Deletes the first item from the free list at index i in the array.
  *    It should be checked before calling this function that there is
@@ -733,7 +784,10 @@ item_get_buddy(struct array *array, void *item, unsigned int i,
  *    It deletes in two distinct steps: first it finds the item, then it
  *    deletes it.  The delete operation is like a normal delete operation
  *    from a doubly linked list, except that if it's the first item, then
- *    the entry in the array is modified to point to the new head
+ *    the entry in the array is modified to point to the new head.
+ *    It is different from take, which removes any item from the free list.
+ *    The item deleted from the list can still be used independently (it is
+ *    not freed), and can be inserted back.
  *  RETURN VALUE
  *    Does not return anything
  ******
