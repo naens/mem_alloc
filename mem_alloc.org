@@ -1,8 +1,8 @@
 #+TITLE: Generalized Fibonacci Memory Allocator
 
 * Introduction
-So, I made this new little project, which initially had to be just a
-module to be used for other applications, but it turned out to be a
+So, I've made this new little project, which initially had to be just
+a module to be used by other applications, but it turned out to be
 slightly more complex than expected.  So I decided to dedicate a whole
 repository to this memory allocator.
 
@@ -19,38 +19,33 @@ can be combined into a single item.
 
 * Data Structures
 ** Array
-The top data structure is a dynamic array.  At first it's allocated
-small, because not every program needs to allocate a lot of memory.
-But because the user might want more memory, the array is copied into
-a larger array, and the original array is freed. 
+The top data structure is a dynamic array.  When it's first allocated,
+it's small, because not every program needs to allocate a lot of
+memory.  But because the user might want more memory, the array is
+copied into a larger array, and the original array is freed.
 
-Yes, to allocate and deallocate data I use the functions provided by
-the OS.  The trick is to ask only for large amounts and as little as
+To allocate and deallocate data I use the functions provided by the
+OS.  The allocator asks only for large amounts and as little as
 possible, because you might never know if the allocator of the OS is
-good enough.  In this case I use Linux, which does not have such
-problems, but it's an example app, made to test the algorithm so that
-I can port the allocator algorithm to other operating systems and so
-on.  It would even work on something like CP/M, which does not have a
-memory allocator, you just have some KB of space that you can use
-however you want.  So in my example, I would replace the calls to the
-OS memory allocator by just returning a piece of this big chunk of
-memory.
+good enough.
 
-As for freeing of the dynamic array, there can be different solutions.
-For example, if you use a linked list of arrays, you don't need to
-free: you put a pointer to the next array, but this way, of course
-it's more difficult to navigate the array.  Another solution would be
-to just leave the old array and not use it.  Yet another solution
-would be to use our own allocator for the array.  So, first we have a
-small array, big enough to have a first allocation.  Then we allocate
-the element and put it in the free list.  We copy the array there, and
-that's it.  If we need a bigger array, we ask from the OS.  When we
-need to free our old array, we can because our new array is already
-allocated and ready to be used.  If you think about it, we don't even
-need the initial array: we just allocate an item from the OS and put
-the initial array in that space.
-
-But here I didn't do such things.  I made everything really simple.
+# TODO
+ - the need for the array to be allocated with the allocator
+   → when there is no good operating system memory allocator, only
+     a chunk of memory that can be used as a FILO allocator
+ - the need to use the normal mem_alloc function in order to resize
+   the array
+   → avoid to use too much the operating system allocator, if we need
+     to use the memory allocator, then begin from the minimum size to
+     ask from the OS.  Only the first allocation can be small (because
+     if a program does not use the memory allocator at all, or a
+     little, one allocation is not a problem).  On the other hand if
+     the program does not use the memory allocator, it won't
+     initialize the allocator in the first place.  If the allocator
+     is initialized, it should be safe to initialize it to the
+     minimum size, as long as it's bigger than the minimum needed for
+     the initial array.
+     Is it worth trying to use the mem_alloc function for everything?..
 
 ** Cells
 Another data structure is the cell.  A cell contains the size, which
