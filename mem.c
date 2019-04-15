@@ -28,8 +28,8 @@
 #define SIZE_2 5
 #define SIZE_3 7
 #define DATA_INIT_BLOCKS 69
-#define ARRAY_INIT_SIZE 10
-#define ARRAY_INIT_CAPACITY 8
+#define ARRAY_INIT_SIZE 11
+#define ARRAY_INIT_CAPACITY 16
 
 /* 32-bit OS */
 #elif defined(__386__) || defined(__i386__) || defined(__DJGPP__)
@@ -38,8 +38,8 @@
 #define SIZE_2 4
 #define SIZE_3 5
 #define DATA_INIT_BLOCKS 36
-#define ARRAY_INIT_SIZE 9
-#define ARRAY_INIT_CAPACITY 8
+#define ARRAY_INIT_SIZE 10
+#define ARRAY_INIT_CAPACITY 16
 
 /* 16-bit OS */
 #elif defined(__I86__) || defined(__86__)
@@ -48,8 +48,8 @@
 #define SIZE_2 3
 #define SIZE_3 4
 #define DATA_INIT_BLOCKS 19
-#define ARRAY_INIT_SIZE 8
-#define ARRAY_INIT_CAPACITY 4
+#define ARRAY_INIT_SIZE 9
+#define ARRAY_INIT_CAPACITY 16
 
 #else
 #error Unsupported Operating System, sorry.
@@ -74,7 +74,7 @@
 #define boolean int
 
 
-#define MEM_ALLOC_DEBUG 0
+#define MEM_ALLOC_DEBUG 1
 
 
 static inline void
@@ -341,7 +341,7 @@ array_inc_size(struct array *array)
         old_data = array->data;
         new_data = (struct cell*)mem_alloc(array->capacity
                                         * (unsigned int)sizeof(struct cell));
-        for (j = 0; j < array->size - 1; j--)
+        for (j = 0; j < array->size; j++)
         {
             new_data[j] = old_data[j];
         }
@@ -888,7 +888,6 @@ mem_free(void *area)
     i = 0;
     while (size != array.data[i].size)
     {
-        if (i > 50) exit(1);
         i++;
     }
     item_set_in_use(item, 0);
