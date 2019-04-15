@@ -27,8 +27,8 @@
 #define SIZE_1 4
 #define SIZE_2 5
 #define SIZE_3 7
-#define DATA_INIT_BLOCKS 19
-#define ARRAY_INIT_SIZE 7
+#define DATA_INIT_BLOCKS 69
+#define ARRAY_INIT_SIZE 10
 #define ARRAY_INIT_CAPACITY 8
 
 /* 32-bit OS */
@@ -37,8 +37,8 @@
 #define SIZE_1 3
 #define SIZE_2 4
 #define SIZE_3 5
-#define DATA_INIT_BLOCKS 10
-#define ARRAY_INIT_SIZE 6
+#define DATA_INIT_BLOCKS 36
+#define ARRAY_INIT_SIZE 9
 #define ARRAY_INIT_CAPACITY 8
 
 /* 16-bit OS */
@@ -47,8 +47,8 @@
 #define SIZE_1 2
 #define SIZE_2 3
 #define SIZE_3 4
-#define DATA_INIT_BLOCKS 3
-#define ARRAY_INIT_SIZE 4
+#define DATA_INIT_BLOCKS 19
+#define ARRAY_INIT_SIZE 8
 #define ARRAY_INIT_CAPACITY 4
 
 #else
@@ -58,7 +58,11 @@
 #define BLOCK_SIZE 8
 #define POINTER_SIZE sizeof(uintptr_t)
 #define HEADER_SIZE POINTER_SIZE
-#define MINIMUM_ALLOC (POINTER_SIZE << 6)
+
+/* the minimum size to allocate is pointer size * 64
+ * after that every allocation is bigger, at least the next
+ * number in the generalized Fibonacci sequence
+ */ 
 
 
 #define LEFT 0
@@ -324,48 +328,26 @@ split_item(struct array *array, unsigned int i, void *item, uintptr_t n);
 void
 array_inc_size(struct array *array)
 {
-    unsigned int i, j, k;
-    void *data_item;
-    uintptr_t n;
+    unsigned int i, j;
     struct cell *new_data, *old_data;
-    if (array->size == array->capacity)
-    {
-        array->capacity *= 2;
-
-        n = BLOCKS(array->capacity * sizeof(struct cell) + HEADER_SIZE);
-        j = 0;
-        for (k = 0; k < array->size; k++)
-        {
-            if (array->data[k].size >= n && array->data[k].items != NULL)
-            {
-                j = k;
-                break;
-            }
-        }
-        
-        if (j == 0)
-        {
-            uintptr_t sz = array->data[k - 1].size + array->data[k - 4].size;
-            debug("array_inc_size: needed blocks: %d, alloc %d\n", n, (int)sz);
-            data_item = alloc_new_item((unsigned int)sz);
-        }
-        else
-        {
-            data_item = take_item(array, j);
-            data_item = split_item(array, j, data_item, n);
-        }
-        item_set_in_use(data_item, 1);
-        new_data = item_get_area(data_item);
-        debug("array_inc_size: memcpy %d bytes\n", (int)(array->size * sizeof(struct cell)));
-        memcpy(new_data, array->data, array->size * sizeof(struct cell));
-        old_data = array->data;
-        array->data = new_data;
-        mem_free(old_data);
-    }
     array->size++;
     i = array->size - 1;
     array->data[i].size = array->data[i-1].size + array->data[i-4].size;
     array->data[i].items = NULL;
+    if (array->size == array->capacity)
+    {
+        array->capacity *= 2;
+
+        old_data = array->data;
+        new_data = (struct cell*)mem_alloc(array->capacity
+                                        * (unsigned int)sizeof(struct cell));
+        for (j = 0; j < array->size - 1; j--)
+        {
+            new_data[j] = old_data[j];
+        }
+        array->data = new_data;
+        mem_free(old_data);
+    }
 }
 
 
@@ -442,6 +424,7 @@ array_init(struct array *array)
     array->data[3].items = NULL;
     
     prev = array->data[3].size;
+
     for (i = 4; i < ARRAY_INIT_SIZE; i++)
     {
         array->data[i].size = prev + array->data[i-4].size;
@@ -699,28 +682,23 @@ mem_alloc(unsigned int x)
     uintptr_t n = BLOCKS(x + HEADER_SIZE);
     debug("mem_alloc: needed blocks: %d\n", n);
 
-    // stop loop: 
-    // * size >= n && items != NULL
-    // * size >= n && end-of-array && size >= MINIMUM
-    // size < n && (i < array.size || size >= MINIMUM)
-    // end-of-array test: i == array.size - 1
+    // try to find an item without increasing the array
     i = 0;
-    while (array.data[i].size < n
-        || (array.data[i].items == NULL
-                && (i < array.size - 1
-                        || array.data[i].size < BLOCKS(MINIMUM_ALLOC))))
+    while (i < array.size && (array.data[i].size < n || array.data[i].items == NULL))
     {
-        if (i == array.size - 1)
-        {
-            array_inc_size(&array);
-        }
         i++;
     }
 
-    if (array.data[i].items == NULL)
+    // if not found, then increase the array and then allocate
+    if (i == array.size)
     {
-        i++;
-        array_inc_size(&array);
+        i--;
+        do 
+        {
+            array_inc_size(&array);
+            i++;
+        } while (array.data[i].size < n);
+
         item = alloc_new_item((unsigned int)array.data[i].size);
     }
     else
@@ -728,6 +706,7 @@ mem_alloc(unsigned int x)
         item = take_item(&array, i);
     }
 
+    // split if needed to
     item = split_item(&array, i, item, n);
     item_set_in_use(item, 1);
     area = item_get_area(item);
