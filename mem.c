@@ -28,9 +28,9 @@
 #define SIZE_1 4
 #define SIZE_2 5
 #define SIZE_3 7
-#define DATA_INIT_BLOCKS 69
-#define ARRAY_INIT_SIZE 11
-#define ARRAY_INIT_CAPACITY 16
+#define DATA_INIT_BLOCKS 19
+#define ARRAY_INIT_SIZE 7
+#define ARRAY_INIT_CAPACITY 8
 
 /* 32-bit OS */
 #elif defined(__386__) || defined(__i386__) || defined(__DJGPP__)
