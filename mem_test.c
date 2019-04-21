@@ -11,7 +11,7 @@
 // constants for random test
 #define ARRAY_SIZE 800
 #define NUMBER_OF_ALLOCATIONS 1000
-#define MAXIMUM_ALLOC_SIZE 5000
+#define MAXIMUM_ALLOC_SIZE 50000
 
 
 
