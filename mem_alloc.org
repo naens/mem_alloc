@@ -7,12 +7,12 @@ slightly more complex than expected.  So I decided to dedicate a whole
 repository to this memory allocator.
 
 * Overview
-This is a generalized Fibonacci memory Allocator.  That means that
+This is a generalized Fibonacci memory allocator.  That means that
 there are multiple free lists grouped in an array and ordered by
 sizes, which follow a generalized Fibonacci sequence.  In this case
 it's 1, 2, 3, 4, 5, 7, 10 ,14, 19, 26, 36..., and so on where a_n =
-a_{n-1} + a_{n-4}.  Also, the sequence does not have to begin from the
-first element.
+a_{n-1} + a_{n-4}.  The sequence does not have to begin from the first
+element.
 
 It's a buddy-based allocator.  Each item has a buddy, and two buddies
 can be combined into a single item.
@@ -25,27 +25,68 @@ memory.  But because the user might want more memory, the array is
 copied into a larger array, and the original array is freed.
 
 To allocate and deallocate data I use the functions provided by the
-OS.  The allocator asks only for large amounts and as little as
-possible, because you might never know if the allocator of the OS is
-good enough.
+OS.  The allocator asks as little as possible, because you might never
+know if the allocator of the OS is good enough.  For this reason the
+size of the memory allocated from the OS increases each times.  It
+follows the generalized Fibonacci sequence: each item has to be at
+least a the size of the block multiplied by the next number of the
+sequence, relative to the size of th last allocation.
 
-# TODO
- - the need for the array to be allocated with the allocator
-   → when there is no good operating system memory allocator, only
-     a chunk of memory that can be used as a FILO allocator
- - the need to use the normal mem_alloc function in order to resize
-   the array
-   → avoid to use too much the operating system allocator, if we need
-     to use the memory allocator, then begin from the minimum size to
-     ask from the OS.  Only the first allocation can be small (because
-     if a program does not use the memory allocator at all, or a
-     little, one allocation is not a problem).  On the other hand if
-     the program does not use the memory allocator, it won't
-     initialize the allocator in the first place.  If the allocator
-     is initialized, it should be safe to initialize it to the
-     minimum size, as long as it's bigger than the minimum needed for
-     the initial array.
-     Is it worth trying to use the mem_alloc function for everything?..
+The array allocates memory for itself.  The first allocation is
+designed so that if freed, it can be inserted into the array.  When
+the array needs to be increased, a new allocation is made the array is
+copied inside of it and the previous allocation is released.
+
+By doing this kind of allocation we can have a really simple Operating
+System allocator: it does not have to be able to free the memory in a
+random order: every allocation is reused by the allocator and so, the
+memory can be freed in any order: the allocation order, the opposite
+order, or all at once, in case we have a big chunk of memory that we
+have to use for our programs.
+
+So here is the details that describe the way I made the calculations
+for the 64-bit Operating System (for other sizes it's similar but with
+different numbers, you can find them in the /defines/ of the file
+~mem.c~.
+
+| Index | Size | Capacity | Array bytes | Area bytes |
+|-------+------+----------+-------------+------------|
+|     0 |    3 |        2 |          32 |         16 |
+|     1 |    4 |        2 |          32 |         24 |
+|     2 |    5 |        4 |          64 |         32 |
+|     3 |    7 |        4 |          64 |         48 |
+|     4 |   10 |        8 |         128 |         72 |
+|     5 |   14 |        8 |         128 |        104 |
+|     6 |   19 |        8 |         128 |        144 |
+|     7 |   26 |        8 |         128 |        200 |
+|     8 |   36 |       16 |         256 |        280 |
+|     9 |   50 |       16 |         256 |        329 |
+
+The size of the block is 8 for every system.  It's because the header
+of the item has to contain 3 flags.
+
+The size begins at 3, not at 1.  The reason is so that an item be able
+to hold the header, the next pointer and the previous pointer.  It's
+not the same for 32-bits and 16-bits.  For example, on 16-bits an item of
+1 block is big enough to contain the three pointer-sized fields.
+
+We increase the capacity just before the array size reaches it.  This
+allows us to always have the sizes for every index we might need.
+
+The array size in bytes is the capacity multiplied by 16 (a cell
+contains two fields of 8 bytes).
+
+The size of the area that is contained in the items of a free list is
+calculated by multiplying the size (the generalized Fibonacci sequence
+number) by 8, because blocks are 8 bytes, and by subtracting 8, which
+is the size of the header in bytes.
+
+We are looking for a free list that can contain the array.  As we can
+see it happens at index 6 and after: 144 is greater than 128.  It's
+also the case for 200 and 128, 280 and 256 and so on.  Actually the
+difference increases, which allows us to stop worrying about the issue
+after the initial initialization.
+
 
 ** Cells
 Another data structure is the cell.  A cell contains the size, which
@@ -93,9 +134,8 @@ size.  The blocks are always 8 bytes.
 ** Items
 Free lists are doubly linked lists, where each node represents a
 memory area that can be returned.  In my implementation I call nodes
-items.  Each such item has a header, which contains the size of the
-total size of the item in blocks and 3 bits: ~lr_bit~, ~inh_bit~, and
-~in_use~ bit.
+items.  Each such item has a header, which contains the total size of
+the item in blocks and 3 bits: ~lr_bit~, ~inh_bit~, and ~in_use~ bit.
 
 When the item is in a free list, its ~in_use_~ bit is 0, but when it's
 used by the user, the ~in_use~ bit is set to 1.
@@ -117,19 +157,19 @@ the previous and the next pointers for the doubly linked list.
 * Functions
 So now I'll explain how the main functions work, namely allocation and
 deallocation.  But before that I would like to mention two other of
-the main functions: ~mem_init~ and ~mem_finalize~.  In my implementation
-they are really simple, and all they can do is they initialize and
-free the data.
+the main functions: ~mem_init~ and ~mem_finalize~.  In my
+implementation they are really simple, they initialize and free the
+data.
 
-The initialization function sets the first four items of the array, so
-from these four items it can calculate all the other items.
+The initialization function sets the first items of the array, so from
+these four items it can calculate all the other items.
 
 The finalization function returns all allocated elements to the OS.
 In order to track them every allocated element is made into a linked
-list node, where the first bytes that can hold a pointer hold a
-pointer to the next.  Every new element is prepended, make it a singly
-linked list.  So when freeing the list all I have to do is follow this
-list and free the elements one by one.
+list node, where the first bytes hold a pointer to the next.  Every
+new element is prepended, make it a singly linked list.  So when
+freeing the list all I have to do is follow this list and free the
+elements one by one.
 
 ** Allocation
 Now, this is how the allocation works: first we look for an element in
@@ -176,15 +216,6 @@ two pointers.  But the number of bytes in a block doesn't change,
 which it so that there are different configurations for different
 sizes of the pointer.
 
-So, this is how I implemented it for pointers of 64 bits, 32 bits and
-16 bits:
-| Pointer size | Area Size | Minimum Item Size | Minimum blocks | First index |
-|--------------+-----------+-------------------+----------------+-------------|
-| 8 bytes      | 16 bytes  | 24 bytes          |              3 |           3 |
-| 4 bytes      | 8 bytes   | 16 bytes          |              2 |           2 |
-| 2 bytes      | 4 bytes   | 8 bytes           |              1 |           1 |
-|--------------+-----------+-------------------+----------------+-------------|
-
 So here is how we get the minimal sizes in the array.  In a 64-bit
 system, the array starts at index 0 which contains a free list of 3
 blocks.  But for 32-bytes, it can be 2 blocks, and 16-bytes can start
@@ -224,13 +255,9 @@ Then it continues similarly for the other:
 #endif
 #+END_SRC
 
-So, this is more or less what I described in the table.  I also
-generate an error if there is an unknown pointer size that I cannot
-determine.
-
-In order to be sure that my defines work, I thought it would be a good
-idea to test the program not only on a 64-bit system, but also 32-bit
-and 16-bit.  In order to do so this is what I did.
+In order to be sure that my everything works, I thought it would be a
+good idea to test the program not only on a 64-bit system, but also
+32-bit and 16-bit.  In order to do so this is what I did.
 
 First I installed multilib on Linux.  It allows to use a 32-bit GCC
 compiler and run 32-bit code.  After the installation it's really
@@ -254,10 +281,8 @@ clean:
 	rm -f *.o mem_test mem_test32
 #+END_SRC
 
-And it works.  By the output of the program I can see that the 32-bit
-pointers are used.
-
-Then I tried on a 32-bit OS, the Hurd.  And yes, it also worked.
+The program seems to work fine on 64-bit Linux, 32-bit Linux and
+32-bit Hurd.
 
 In order to do more tests I made it so that it compiles under
 OpenWatcom v2.0 C compiler.  So, using Linux I compiled 32-bit Linux,

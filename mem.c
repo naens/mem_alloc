@@ -19,6 +19,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stdarg.h>
+
 #include "mem.h"
 
 /* 64-bit OS */
@@ -27,9 +28,9 @@
 #define SIZE_1 4
 #define SIZE_2 5
 #define SIZE_3 7
-#define DATA_INIT_BLOCKS 69
-#define ARRAY_INIT_SIZE 11
-#define ARRAY_INIT_CAPACITY 16
+#define DATA_INIT_BLOCKS 19
+#define ARRAY_INIT_SIZE 7
+#define ARRAY_INIT_CAPACITY 8
 
 /* 32-bit OS */
 #elif defined(__386__) || defined(__i386__) || defined(__DJGPP__)
@@ -97,8 +98,8 @@ debug(char *fmt, ...)
  *    An item is an object that contains a header specifying its size and an
  *    area that can be returned to the user when as the result of the
  *    mem_alloc function.  Its job is to represent a usable block of memory. 
- *    When its not used, the area contains the pointers to the previous and
- *    next items making a doubly linked list to which points the cell.  The
+ *    When its not used, the area contains pointers to the previous and next
+ *    items making a doubly linked list to which points the cell.  The
  *    header contains the size field which is equal to the size field in the
  *    cell.  The header also contains 3 bits which indicate:
  *    * is_in_use: whether the area is being used
@@ -231,7 +232,10 @@ print_item(void *item, char *msg)
     boolean in_use = item_is_in_use(item);
     boolean lr_bit = item_get_lr_bit(item);
     boolean inh_bit = item_get_inh_bit(item);
-    debug("ITEM %04x %-16s    size=%-6" PRIxPTR "\t", PTR_NUM(item), msg, size);
+    debug("ITEM %04x %-16s    size=%-6" PRIxPTR "\t",
+        PTR_NUM(item),
+        msg,
+        size);
     debug("    in_use: %-6s lr_bit: %-6s inh_bit: %-6s",
         in_use ? "true," : "false,",
         lr_bit == LEFT ? "LEFT," : "RIGHT,",
@@ -307,12 +311,12 @@ struct array {
  *  DESCRIPTION
  *    The function array_inc_size increases the size of the array by 1. 
  *    Usually it only increases the size of the array->size variable, but
- *    when the size becomes more than the current capacity, a new array is
- *    allocated, data is copied into it, and the old array is freed.  And,
- *    of course, a new capacity is assigned.  When a new size is set, it is
- *    made sure that array->size is initialized.  The array uses the
- *    functionality of the allocator in order to allocate and free for the
- *    case when it needs to copy itself in a new location.
+ *    when the size reaches than the current capacity, a new array is
+ *    allocated, data is copied into it, and the old array is freed.  Also a
+ *    new capacity is assigned.  When a new size is set, it is made sure
+ *    that array->size is initialized.  The array uses the functionality of
+ *    the allocator in order to allocate and free for the case when it needs
+ *    to copy itself into a new location.
  *  RETURN VALUE
  *    This function does not return anything.
  *******
@@ -393,9 +397,12 @@ void *mem_list;
  *  SYNOPSIS
  *    void array_init(struct array *array)
  *  DESCRIPTION
- *    This function is called during the initialization of the memory.  It
- *    allocates an initial space for the array and creates a minimal array
- *    inside of it.  When the array needs to be resized, another space is
+ *    This function is called during the initialization of the memory. 
+ *    There is a limit of the minimum size that we allocate from the OS. 
+ *    The initial array has to be at least this size.  In the case of the
+ *    supported architectures this size is bigger than the minimal size that
+ *    can hold an array big enough so that it can be hold the array when the
+ *    array is freed.  When the array needs to be resized, another space is
  *    allocated and the array is copied there.  The old area, that contained
  *    the previous version of the array, is inserted into the array and can
  *    be reused.
@@ -502,7 +509,7 @@ mem_finalize()
  *  DESCRIPTION
  *    Deletes the first item from the free list at index i in the array.  It
  *    should be checked before calling this function that there is at least
- *    one item in the array, that is, array->data[i].items is not NULL.
+ *    one item in the array cell, that is, array->data[i].items is not NULL.
  *  RETURN VALUE
  *    Returns the first item from the specified free list.
  ******
@@ -561,11 +568,11 @@ insert_item(struct array *array, unsigned int i, void *item)
  *      two buddies and inserting one of them into the free list, until we
  *      get an item as small as possible that can hold n blocks.
  *
- *      So, at each step we check if the item needs to be split, split it,
- *      determine if we want to use the left buddy or the right buddy, and
- *      continue the loop, which this time checks the buddy we have chosen
- *      and so on.  The buddy that is not used is inserted back into the
- *      free list.
+ *      So, at each step we check if the item needs to be split.  Then we
+ *      split it and determine if we want to use the left buddy or the right
+ *      buddy, and we continue the loop, which this time checks the buddy we
+ *      have chosen and so on.  The buddy that is not used is inserted back
+ *      into the free list.
  ******
  */
 
@@ -620,15 +627,15 @@ split_item(struct array *array, unsigned int i, void *item, uintptr_t n)
  *  DESCRIPTION
  *    The function alloc_new_item allocates a new item of n blocks.  It also
  *    allocates a fake empty buddy, so that it does not merge more than it
- *    should.  The fake right buddy that is marked in use and, thus, stops
- *    the merging of buddies.
+ *    should.  The fake right buddy is marked in use in order to stop the
+ *    merging of buddies.
  *
  *    The whole thing is prefixed by a pointer in order to make it a singly
  *    linked list, mem_list, which is used to free all the elements
  *    allocated from the OS.
  *
- *    The number passed in the n parameter has to always be a number
- *    belonging to the generalized Fibonacci sequence.
+ *    The number passed in the n parameter is always a number belonging to
+ *    the generalized Fibonacci sequence.
  *  RETURN VALUE
  *    This function returns the address of new item allocated.
  ******
@@ -659,16 +666,23 @@ alloc_new_item(unsigned int n)
  *  SYNOPSIS
  *    void *mem_alloc(unsigned int x)
  *  DESCRIPTION
- *    Allocates minimum x bytes.  First it finds the right location, which
- *    is either the first free item with the number of blocks required, or a
- *    newly allocated block.
+ *    Allocates minimum x bytes.
  *
- *    Then it splits the item if it can be split, that is the number of
- *    blocks needed is less or equal to a generalized Fibonacci number
- *    before the block found in the previous step.
+ *    First we check if the array contains an element that we can use in
+ *    order to hold x bytes.
  *
- *    Then it sets the in_use bit of the item and return the area of the
- *    item.
+ *    If such element is found we remove it from
+ *    the array.
+ *
+ *    Otherwise we stretch the array if needed because the free lists in the
+ *    array have to follow the generalized Fibonacci sequence.  So if we
+ *    need to allocate a very big item, we have to fill everything that
+ *    comes in between the end of the array and the place where the big item
+ *    will have to go.  Then we can allocate the area from the OS.  The rule
+ *    is to never allocate the same amount or less from the OS.
+ *
+ *    Once we have the item, we split it as much as needed.  Then we set the
+ *    in_use bit of the item and return the area.
  *  RETURN VALUE
  *    An area of minimum x bytes.
  ******
@@ -728,10 +742,10 @@ mem_alloc(unsigned int x)
  *    is a left or the right buddy.  Then, knowing the size, it's easy to
  *    know the location of the buddy.
  *  RETURN VALUE
- *    The address of the buddy.  It also sets the address pointed by ibuddy,
- *    which corresponds to the index in the array where it would be
- *    inserted.  That is, the index of the array that gives the location of
- *    the free list of the same size as the buddy.
+ *    The function retuens the address of the buddy.  It also sets the
+ *    address pointed by ibuddy, which corresponds to the index in the array
+ *    where it would be inserted.  That is, the index of the array that
+ *    gives the location of the free list of the same size as the buddy.
  ******
  */
 
@@ -763,12 +777,13 @@ item_get_buddy(struct array *array, void *item, unsigned int i,
  *  DESCRIPTION
  *    The function delete_item deletes one item, which it finds by address,
  *    from the free list specified by the index i in the array.  It deletes
- *    in two distinct steps: first it finds the item, then it deletes it. 
- *    The delete operation is like a normal delete operation from a doubly
- *    linked list, except that if it's the first item, then the entry in the
- *    array is modified to point to the new head.  It is different from
- *    take_item, which removes any item from the free list.  The item
- *    deleted from the list can still be used independently (it is not
+ *    in two steps: first it finds the item, then it deletes it.  The delete
+ *    operation is like a normal delete operation from a doubly linked list,
+ *    except that if it's the first item, then the entry in the array is
+ *    modified to point to the new head.
+ *
+ *    It is different from take_item, which removes any item from the free
+ *    list.  The item deleted from the list can still be used (it is not
  *    freed), and can be inserted back.
  *  RETURN VALUE
  *    Does not return anything
@@ -808,9 +823,9 @@ delete_item(struct array *array, unsigned int i, void *item)
  *    coalesce - merge buddies until an buddy in use is found.
  *  DESCRIPTION
  *    The coalesce function makes the opposite of splitting: it merges
- *    buddies that are not in use, and stop when it finds a buddy which is
+ *    buddies that are not in use, and stops when it finds a buddy which is
  *    in use, which will happen sooner or later because the item at the top
- *    had a fake buddy which is marked in use.
+ *    had a fake right buddy which is marked in use.
  *  SYNOPSIS 
  *    void coalesce(struct array *array, unsigned int);
  *  RETURN VALUE
@@ -827,7 +842,7 @@ coalesce(struct array *array, unsigned int i)
     uintptr_t size;
     item = array->data[i].items;
     buddy = item_get_buddy(array, item, i, &ibuddy);
-    while (!item_is_in_use(buddy)    // !! don't coalesce if buddy not complete
+    while (!item_is_in_use(buddy)
         && array->data[ibuddy].size == item_get_size(buddy))
     {
         delete_item(array, i, item);
@@ -865,10 +880,9 @@ coalesce(struct array *array, unsigned int i)
  *    void mem_free(void *area)
  *  DESCRIPTION
  *    Return the item after use to the free list.  The first thing is to get
- *    the item from the address from the area.  Using the header, it's easy
- *    to find the size, and, having found the size, we can find the index
- *    because the array elements, the cells, have a field specifying the
- *    size.
+ *    the item pointer from the address from the area.  Using the header,
+ *    it's easy to find the size, and, having found the size, we have the
+ *    index which must match the size field of a free list in the array.
  *  RETURN VALUE
  *    Does not return anything.
  ******
