@@ -8,7 +8,9 @@ test
 *.ods
 *.exe
 *.pdf
+*.bbl
 *.tex
+*.bak
 *.config
 *.creator
 *.files
