@@ -23,7 +23,7 @@ length of the string.
 
 There are, of course many other examples why a memory allocator might
 be needed.  Many data structures, like trees and lists are often
-implemented by using dynami memory allocation.
+implemented by using dynamic memory allocation.
 
 Other use is to be able to store temporary, intermediate data.  For
 example, we read a file and generate a list of string from it.  Then
@@ -59,11 +59,11 @@ efficiently.
 ** Blocks
 My allocator specifies the size of the items it allocates in blocks of
 8 bytes.  The main reason is to be able to store three additional flag
-bits in the size field in the item.  It is imprortant for space
+bits in the size field in the item.  It is important for space
 efficiency: otherwise I would lose some bytes for each allocation and
 I also wanted to have the returned area aligned for the needs of the
 OS, we cannot know: if the user decides to use it in order to store a
-structure or a mutli-byte variable there, it would better be aligned.
+structure or a multi-byte variable there, it would better be aligned.
 So if the OS returns aligned memory, my allocator will also return
 aligned memory.  Otherwise it does not matter.
 
@@ -247,13 +247,13 @@ When we get some chunks of memory from the Operating System, we
 organize them into a linked list in order to be able to free them when
 needed.  So, every time we use the first size-of-pointer bytes of the
 memory area we receive to store the address of the next chunk.  This
-way, if the Operating System reuires us to free all the allocated
+way, if the Operating System requires us to free all the allocated
 memory before exiting the application, we free it by using this linked
 list.
 
 ** Allocation from the Operating System
 We need a source for the memory in order to give it to the user.  For
-this we use the memory allocatory of the Operating System.  But we
+this we use the memory allocator of the Operating System.  But we
 don't know how good it is, which means we should not rely on it too
 much.  We should only use it when we need some memory, and only for
 large chunks of memory.
@@ -263,7 +263,7 @@ For this reason I decided to impose the following rules:
    64 times the size of the pointer.
  * When we ask, we ask for a larger amount that the previous time.
  * We do not return memory to the Operating System until the very end,
-   when we free everything at the end of the epplication.
+   when we free everything at the end of the application.
 
 This way we do not assume that the memory allocator of the Operating
 System is good or efficient.  It's our job to make the memory
@@ -274,7 +274,7 @@ functionality from it.  It can very well be the Transient Program Area
 (TPA) of CP/M-80.
 
 ** The first Items in the Array
-The first four items in the array cannot be split bacause there is
+The first four items in the array cannot be split because there is
 nothing smaller.  This means, in case we need to allocate a lot of
 small items, it's better to have these unsplittable items as small as
 possible in order to no waste space.
@@ -284,7 +284,7 @@ of the first free list in the array.
 
 For 64-bit we have blocks of 8 bytes and pointers also of 8 bytes.  An
 item has to contain a header, a next pointer and a previous pointer.
-Togetther it makes 24 bytes, which can be stored in 3 blocks.  Thus
+Together it makes 24 bytes, which can be stored in 3 blocks.  Thus
 the first size will be 3.
 
 For 32 bits blocks are of 8 bytes (it doesn't change) and pointers are
@@ -338,10 +338,10 @@ Here is an example:
 \end{tikzpicture}
 
 In this picture we see some examples that illustrate how the
-inheritence and the ~lr_bit~ is restored from children.  The
-inheritence bit is shown by the letter L or R.
+inheritance and the ~lr_bit~ is restored from children.  The
+inheritance bit is shown by the letter L or R.
 
-Let's look at the node 69.  It's a right child with left inheritence
+Let's look at the node 69.  It's a right child with left inheritance
 bit.  When it's split, the /right/ property goes to the left child as
 the inheritance bit and the left property goes to the right child as
 inheritance bit.   When the children are merged back, both the
@@ -350,7 +350,7 @@ inheritance bit.   When the children are merged back, both the
 The same thing happens when we split the node with size 19.  It's a
 left child and this property is kept by the left child as its
 left-right bit.  The node 14 is the right child, and it's keeping the
-inheritence bit.
+inheritance bit.
 
 The root node on the picture actually does not exist.  It's there in
 order to show the connection to the /fake right/ node, which does not
@@ -518,6 +518,6 @@ this reason I could not compare it to real memory allocator nor find a
 test suite which would tell how bad or how good it is.  But for my
 purposes, namely, to become more familiar with memory allocations, and
 to be ready to write a memory allocator for a 16-bit single-threaded
-environment it's exaclty what is needed.
+environment it's exactly what is needed.
 
 See you next time, bye.
