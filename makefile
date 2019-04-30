@@ -12,7 +12,7 @@ mem_test_ow: $src
 	wcl386 $src -q -fe=$^. -bcl=linux
 
 # 32-bit dos
-mem_test_dos32.exe: $src
+memtst32.exe: $src
 	set INCLUDE=$(%WATCOM)/h
 	wcl386 $src -q -fe=$^. -bt=dos -l=dos4g
 
