@@ -10,6 +10,7 @@ test
 *.pdf
 *.bbl
 *.tex
+*.md
 *.bak
 *.config
 *.creator
