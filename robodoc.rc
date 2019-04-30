@@ -1,0 +1,32 @@
+headertypes:
+    p  "Program"      robo_program
+ignore files:
+    docs
+    troff
+    .git
+    tests
+accept files:
+    *.c
+    *.h
+header markers:
+    /****
+    ****
+    #****
+    ;****
+remark markers:
+    *
+    #
+    ;
+end markers:
+    ****
+    /****
+    #****
+    ;****
+header separate characters:
+    ,
+header ignore characters:
+    [
+remark begin markers:
+    /*
+remark end markers:
+    */
